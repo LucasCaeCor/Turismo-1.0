@@ -1,0 +1,272 @@
+
+
+ body {
+  background-image: url("https://th.bing.com/th/id/R.9c0d21dc37dc409c16101c6b50a15992?rik=wgdPw25yQWFTyw&riu=http%3a%2f%2fwww.telemacoborba.pr.gov.br%2fimages%2f2017-materias%2faerea-tb-com-harmonia.jpg&ehk=SMWc1szvngjSbGBtXHTEpeda3l52VJZKF6XqaPWQboI%3d&risl=&pid=ImgRaw&r=0");
+  background-size: cover;  /* Faz a imagem cobrir todo o fundo */
+  background-position: center;  /* Centraliza a imagem */
+  background-repeat: no-repeat;  /* Impede que a imagem se repita */
+}
+
+ .conteudo-oculto {
+     transition: all 0.3s ease-in-out;
+ }
+
+ /* Adicionando uma altura fixa para a área de comentários e habilitando a rolagem */
+.comentarios-lista {
+  max-height: 200px;  /* Tamanho máximo da área de comentários */
+  overflow-y: auto;   /* Ativa a rolagem vertical */
+  margin-bottom: 10px;
+}
+
+/* Estilo para os cards com efeito hover */
+.card {
+  transition: transform 0.3s ease-in-out;
+}
+
+.card:hover {
+  transform: scale(1.05); /* Aumenta ligeiramente o tamanho do card ao passar o mouse */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Adiciona sombra no hover */
+}
+
+/* Garantir que as imagens dentro dos cards sejam responsivas e tenham o mesmo tamanho */
+.card-img-top {
+  width: 100%;
+  height: 200px; /* Define uma altura fixa */
+  object-fit: cover; /* Corta a imagem para cobrir o espaço sem distorcer */
+}
+
+/* Responsividade: Para telas menores, ajusta a altura da imagem */
+@media (max-width: 767px) {
+  .card-img-top {
+      height: 150px; /* Ajusta a altura para telas menores */
+  }
+}
+
+/* Card hover effect */
+.card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Ajustando o tamanho da imagem no card */
+.card-img-top {
+    width: 100%;
+    height: 200px;  /* Definindo um tamanho fixo para a imagem */
+    object-fit: cover;  /* Faz a imagem cobrir completamente o espaço sem deformar */
+}
+
+/* Estilizando o Modal */
+/* Modal */
+.modal-content {
+  padding: 20px;
+}
+
+/* Container para a imagem e conteúdo */
+.modal-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+/* Imagem */
+.modal-image {
+  flex: 0 0 30%; /* A imagem ocupa 30% da largura */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal-image img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+
+/* Coluna de Descrição e Comentários */
+.modal-content-right {
+  flex: 1;
+}
+
+/* Descrição */
+#detalhesPonto h5 {
+  margin-top: 0;
+  font-size: 18px;
+}
+
+#descricaoPonto {
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+/* Comentários */
+.comentarios-list {
+  list-style-type: none;
+  padding-left: 0;
+}
+
+.comentarios-list li {
+  margin-bottom: 10px;
+  font-size: 14px;
+  color: #555;
+}
+
+/* Formulário de Comentário */
+#comentarioForm {
+  margin-top: 20px;
+}
+
+#comentarioForm .form-control {
+  margin-bottom: 10px;
+}
+
+/* Botões à direita */
+.modal-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.modal-buttons .btn {
+  width: 150px;
+}
+
+/* Responsividade */
+@media (max-width: 767px) {
+  .modal-container {
+      flex-direction: column;
+      align-items: center;
+  }
+
+  .modal-image {
+      flex: 0 0 100%;
+      margin-bottom: 20px;
+  }
+
+  .modal-content-right {
+      flex: 0 0 100%;
+  }
+}
+
+
+
+
+/* outra coisa */
+.dropdown-toggle {
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.dropdown-toggle i {
+  font-size: 1.2rem;
+  color: #6c757d;
+}
+
+.dropdown .btn {
+  border: none;
+  background-color: transparent;
+  color: #555;
+  padding: 0;
+}
+
+.dropdown .btn:hover {
+  color: #000;
+}
+
+/* Navbar Básica */
+.navbar {
+  background-color: #343a40; /* Cor de fundo da navbar */
+  padding: 1rem 2rem; /* Aumenta o padding para tornar a navbar mais espaçosa */
+  font-family: 'Arial', sans-serif; /* Define a fonte */
+  border-bottom: 2px solid #444; /* Borda sutil na parte inferior da navbar */
+}
+
+/* Estilo dos links da navbar */
+.nav-link {
+  color: #f8f9fa !important; /* Cor do texto */
+  font-size: 1.1rem; /* Tamanho da fonte */
+  transition: all 0.3s ease; /* Transição suave para os efeitos de hover */
+  padding: 0.5rem 1rem; /* Padding para os links */
+}
+
+.nav-link:hover {
+  color: #ffcc00 !important; /* Cor amarela no hover */
+  text-decoration: underline; /* Sublinha os links ao passar o mouse */
+}
+
+/* Quando o usuário está logado */
+.navbar .nav-item.logged-in .nav-link {
+  color: #28a745; /* Cor verde para itens de usuário logado */
+}
+
+/* Quando o usuário é administrador */
+.navbar .nav-item.admin .nav-link {
+  color: #007bff; /* Cor azul para itens de administrador */
+}
+
+/* Efeito de hover nos itens de navegação */
+.navbar-nav .nav-item:hover {
+  background-color: rgba(255, 255, 255, 0.1); /* Cor de fundo suave no hover */
+  border-radius: 5px; /* Borda arredondada no hover */
+}
+
+/* Responsividade: Navbar em telas pequenas */
+@media (max-width: 991px) {
+  .navbar {
+      background-color: #343a40; /* Cor de fundo da navbar em telas pequenas */
+  }
+
+  .navbar-toggler {
+      border: 2px solid #ffcc00; /* Borda amarela no botão de toggler */
+  }
+
+  .navbar-toggler-icon {
+      background-color: #ffcc00; /* Cor amarela no ícone de toggler */
+  }
+}
+
+/* Navbar expandida (na versão mobile ou em telas grandes) */
+.navbar-expand-lg .navbar-collapse {
+  justify-content: flex-end; /* Alinha os itens à direita */
+}
+
+
+
+.navbar-nav {
+  display: flex;
+  flex-direction: row;
+}
+
+/* Customizando o item de logout */
+.navbar .nav-item.logout .nav-link {
+  color: #dc3545; /* Cor vermelha para o botão "Sair" */
+}
+
+.navbar .nav-item.logout .nav-link:hover {
+  background-color: #dc3545; /* Cor de fundo vermelha no hover */
+  color: #fff; /* Cor do texto no hover */
+  border-radius: 5px; /* Bordas arredondadas no hover */
+}
+
+/* Customizando o item de "Bem-vindo" */
+.navbar .nav-item .nav-link {
+  font-weight: bold; /* Deixa o texto mais forte */
+}
+
+/* Navbar no modo de login e cadastro */
+.navbar .nav-item .nav-link {
+  font-size: 1rem; /* Tamanho de fonte ajustado para login e cadastro */
+}
+
+/* Ajustes para a versão mobile */
+@media (max-width: 576px) {
+  .navbar-nav .nav-item {
+      margin-left: 0;
+      margin-bottom: 10px; /* Adiciona espaçamento entre os itens na versão mobile */
+  }
+}
