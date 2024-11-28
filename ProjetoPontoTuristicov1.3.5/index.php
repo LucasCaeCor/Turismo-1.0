@@ -2,11 +2,11 @@
 session_start();
 include 'db_connection.php';
 
-
 // Verifica se o usuário está logado e se é admin
 $usuarioLogado = isset($_SESSION['usuario']);
 $isAdmin = isset($_SESSION['is_admin']) ? $_SESSION['is_admin'] : false;
 
+// logica para excluir comentario (FUNCIONANDO)
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['excluir_comentario_id'])) {
     $comentarioId = intval($_GET['excluir_comentario_id']);
     
@@ -40,21 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['excluir_comentario_id']
     exit();
 }
 
-if (isset($_POST['editar_comentario_id']) && isset($_POST['novo_comentario_texto'])) {
-    $comentarioId = $_POST['editar_comentario_id'];
-    $novoComentarioTexto = $_POST['novo_comentario_texto'];
-
-    // Atualizar o comentário no banco de dados
-    $sql = "UPDATE comentarios SET comentario = ? WHERE id = ?";
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([$novoComentarioTexto, $comentarioId]);
-
-    // Retornar uma resposta para o JavaScript
-    echo json_encode(['status' => 'success']);
-    exit;
-}
-
-// Lógica para excluir ponto turístico (somente admin)
+// Lógica para excluir ponto turístico (somente admin) (FUNCIONANDO)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['excluir_ponto_id']) && $isAdmin) {
     $pontoId = intval($_POST['excluir_ponto_id']);
     
@@ -75,7 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['excluir_ponto_id']) &
     exit();
 }
 
-// Adiciona um comentário, se enviado
+// Adiciona um comentário, se enviado  (FUNCIONANDO)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['comentario'], $_POST['ponto_id']) && $usuarioLogado) {
     $comentario = htmlspecialchars($_POST['comentario']);
     $pontoId = intval($_POST['ponto_id']);
@@ -116,16 +102,257 @@ while ($ponto = $resultado->fetch_assoc()) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css" rel="stylesheet" type="text/css" />
     <link href="https://fonts.googleapis.com/css?family=Lato:300,400,700,300italic,400italic,700italic" rel="stylesheet" type="text/css" />
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-
-
     <link href="css/styles.css" rel="stylesheet" />
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCOSuLd-yd2Bxa7w98Zbs1oHu9GqL0CH38"></script>
 
     <script>
+   </script>
 
+</head>
+<body>
+<section><!-- inicio banner -->
+    <nav class="navbar navbar-light bg-light static-top">
+        <div class="container">
+            <a class="navbar-brand" href="index.php">Bem Vindo, Senhor(a)</a>
+            <ul class="navbar-nav ml-auto">
+                <?php if ($usuarioLogado): ?>
+                    <div id="menu" class="ml-auto d-flex align-items-center">
+                        <span class="text-light me-3">Bem Vindo Sr. <?= htmlspecialchars($_SESSION['usuario']) ?> !</span>
+                    </div>
+                    <?php if (!$isAdmin): ?>
+                        <a class="btn btn-primary" href="solicitacaoForm.php">Solicitar Cadastro de Ponto</a>
+                    <?php endif; ?>
+                    <?php if ($isAdmin): ?>
+                        <a class="btn btn-primary" href="gerenciar_solicitacoes.php">Gerenciar Solicitações</a>
+                        <a class="btn btn-primary" href="cadastro_ponto.php">Cadastrar Ponto</a>
+                    <?php endif; ?>
+                    <a class="btn btn-primary" href="logout.php">Sair</a>
+                <?php else: ?>
+                    <a class="btn btn-primary" href="login.php">Entrar</a>
+                    <a class="btn btn-primary" href="cadastro.php">Cadastrar-se</a>
+                <?php endif; ?>
+            </ul>
+        </div>
+    </nav>
+</section>
+
+<!-- Masthead --> 
+<header class="masthead">
+    <!-- INICIO MAPA -->
+    <section>
+        <div class="container mt-4">
+            <h2>Pontos Turísticos de Telêmaco Borba</h2>
+            <!-- Divisão para o Mapa e Modal -->
+            <div id="map-container" style="display: flex; justify-content: center; align-items: flex-start; height: 80vh;">
+                <!-- Mapa (inicialmente centralizado) -->
+                <div id="map" style="width: 60%; height: 100%; transition: transform 0.5s ease;"></div>
+
+                <!-- Modal com Informações (oculto inicialmente) -->
+                <div id="info-modal" style="width: 35%; height: 100%; overflow-y: auto; display: none; transition: transform 0.5s ease; padding: 20px;">
+                    <!-- Botão Voltar -->
+                    <button id="back-btn" class="btn btn-primary" style="position: absolute; top: 10px; left: 10px;">Voltar</button>
+                    <div style="height: 50%; width: 100%; overflow: hidden;">
+                        <img id="modal-image" class="img-fluid" style="object-fit: cover; height: 100%; width: 100%;" />
+                    </div>
+                    <h3 id="modal-title"></h3>
+                    <p id="modal-description" style="margin-bottom: 15px;"></p>
+                    <!-- Descrição com "Ler Mais" se for muito grande -->
+                    <div id="long-description-container" style="display: none;">
+                        <p id="modal-long-description" style="display: none;"></p>
+                        <button id="read-more-btn" style="display: none;">Ler Mais</button>
+                    </div>
+                </div>
+            </div> <!-- Fim do map-container -->
+            </div> <!-- Fim da linha de cards -->
+        </div> <!-- Fim do container -->
+    </section>
+</header>
+
+<!-- Script CSS para Divisão do Mapa e Modal -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const mapElement = document.getElementById('map');
+        const infoModal = document.getElementById('info-modal');
+        const mapContainer = document.getElementById('map-container');
+        const modalTitle = document.getElementById('modal-title');
+        const modalDescription = document.getElementById('modal-description');
+        const modalImage = document.getElementById('modal-image');
+        const longDescriptionContainer = document.getElementById('long-description-container');
+        const readMoreBtn = document.getElementById('read-more-btn');
+        const modalLongDescription = document.getElementById('modal-long-description');
+        const backBtn = document.getElementById('back-btn');
+
+        // Função para exibir mapa e modal com informações
+        function showMapAndModal() {
+            mapElement.style.transform = "translateX(-40%)"; // Mapa se move para a esquerda
+            infoModal.style.display = "block";  // Exibe o modal com as informações
+            infoModal.style.transform = "translateX(0)";  // Exibe o modal deslizando de volta
+        }
+
+        // Função para preencher o modal com as informações
+        function populateModal(title, description, image, longDescription) {
+            modalTitle.textContent = title;
+            modalDescription.textContent = description;
+            modalImage.src = image;
+            modalLongDescription.textContent = longDescription;
+
+            // Verifica se a descrição é muito longa e exibe "Ler Mais"
+            if (longDescription.length > 50) {
+                longDescriptionContainer.style.display = 'block';
+                readMoreBtn.style.display = 'inline-block';
+            } else {
+                longDescriptionContainer.style.display = 'none';
+                readMoreBtn.style.display = 'none';
+            }
+
+            // Lógica do botão "Ler mais"
+            readMoreBtn.addEventListener('click', function() {
+                if (modal-description.style.display === 'none' || modalLongDescription.style.display === '') {
+                    modalLongDescription.style.display = 'block';  // Exibe a descrição longa
+                    readMoreBtn.textContent = 'Ler Menos';  // Troca o texto para "Ler Menos"
+                } else {
+                    modalLongDescription.style.display = 'none';  // Oculta a descrição longa
+                    readMoreBtn.textContent = 'Ler Mais';  // Troca o texto para "Ler Mais"
+                }
+            });
+        }
+
+        // Função para voltar ao estado inicial
+        function backToInitialState() {
+            mapElement.style.transform = "translateX(0)";  // Mapa retorna ao centro
+            infoModal.style.display = "none";  // Esconde o modal
+        }
+
+        // Ação do botão Voltar
+        backBtn.addEventListener('click', function() {
+            backToInitialState();  // Chama a função para voltar à posição inicial
+        });
+
+
+    });
+</script>
+
+<!-- Coisas a Se fazer no site-->
+<section class="features-icons bg-light text-center">
+    <div class="container">
+        <div class="row">
+            <div class="features-icons-item mx-auto mb-5 mb-lg-0 mb-lg-3">
+                <div class="features-icons-icon d-flex"><i class="bi-window m-auto text-primary"></i></div>
+                    <h3>Procure</h3>
+                    <p class="lead mb-0">Procure o Ponto Turístico Desejado</p>
+                    <input type="text" id="search-input" class="form-control mt-3" placeholder="Digite o nome do ponto turístico">
+            </div>
+            <div class="features-icons-item mx-auto mb-5 mb-lg-0 mb-lg-3">
+                <div class="features-icons-icon d-flex"><i class="bi-layers m-auto text-primary"></i></div>
+                    <h3>Cadastre um Ponto</h3>
+                    <p class="lead mb-0">Cadastre o Lugar que julga ser importante!</p>
+                    <?php if (!$isAdmin): ?>    
+                        <a href="solicitacaoForm.php" class="btn btn-primary" aria-label="Cadastrar um ponto turístico">Cadastrar Ponto</a>
+                    <?php endif; ?>
+            </div>
+            <div class="features-icons-item mx-auto mb-0 mb-lg-3">
+                <div class="features-icons-icon d-flex"><i class="bi-terminal m-auto text-primary"></i></div>
+                    <h3>Comente</h3>
+                    <p class="lead mb-0">Comente no seu ponto favorito ou no que você mais odiou. Deixe seu feedback!</p>              
+            </div>
+        </div> 
+    </div>
+</section>"
         
-       
+<!-- Aqui são os cards com as imagens-->
+<section class="showcase">
+    <div class="container-fluid p-0">
+        <div class="row">
+            <?php foreach ($pontosTuristicos as $ponto): ?>
+                <div class="col-lg-4 col-md-6 mb-4">
+                    <div class="card card-clickable h-100" data-ponto-id="<?= $ponto['id'] ?>" onclick="centerMapAndPlaceMarker(<?= $ponto['id'] ?>)">
+                        <div class="card-img-container">
+                            <img class="card-img-top" src="<?= $ponto['imagem_url'] ?>" alt="Imagem de <?= htmlspecialchars($ponto['nome']) ?>">
+                        </div>
+                        <div class="card-body">
+                            <h5 class="card-title"><?= htmlspecialchars($ponto['nome']) ?></h5>
+                            <p class="card-text"><?= htmlspecialchars($ponto['descricao']) ?></p>
+                        </div>
+                        <div class="card-footer d-flex justify-content-between">
+                            <?php if ($isAdmin): ?>
+                                <button class="btn btn-danger excluir-ponto" data-ponto-id="<?= $ponto['id'] ?>">Excluir</button>
+                            <?php endif; ?>
+                            <button class="btn btn-info" data-toggle="modal" data-target="#comentariosModal" data-ponto-id="<?= $ponto['id'] ?>">Comentários</button>
+                        </div>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+</section>
+
+
+<section><!-- Modal para exibir e adicionar comentários -->
+    <div class="modal fade" id="comentariosModal" tabindex="-1" role="dialog" aria-labelledby="comentariosModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <ul id="comentariosList"></ul>
+                    <?php if ($usuarioLogado): ?>
+                        <div class="mt-3">
+                        <form id="comentarioForm" action="" method="POST">
+                            <div class="form-group">
+                                <label for="comentario">Deixe seu comentário:</label>
+                                <textarea class="form-control" name="comentario" required></textarea>
+                            </div>
+                            <input type="hidden" name="ponto_id" id="modalPontoId" value="">
+                            <button type="submit" class="btn btn-primary">Enviar Comentário</button>
+                        </form>
+                        </div>
+                        <?php endif; ?>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section><!-- Footer-->
+    <footer class="footer bg-light ">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-6 h-100 text-center text-lg-start my-auto">
+                    <ul class="list-inline mb-2">
+                        <li class="list-inline-item"><a href="#!">Sobre</a></li>
+                        <li class="list-inline-item">⋅</li>
+                        <li class="list-inline-item"><a href="#!">Contato</a></li>
+                        <li class="list-inline-item">⋅</li>
+                        <li class="list-inline-item"><a href="#!">Terms of Use</a></li>
+                        <li class="list-inline-item">⋅</li>
+                        <li class="list-inline-item"><a href="#!">Privacy Policy</a></li>
+                    </ul>
+                    <p class="text-muted small mb-4 mb-lg-0">&copy; Your Website 2023. All Rights Reserved.</p>
+                </div>
+                <div class="col-lg-6 h-100 text-center text-lg-end my-auto">
+                    <ul class="list-inline mb-0">
+                        <li class="list-inline-item me-4">
+                            <a href="#!"><i class="bi-facebook fs-3"></i></a>
+                        </li>
+                        <li class="list-inline-item me-4">
+                            <a href="#!"><i class="bi-twitter fs-3"></i></a>
+                        </li>
+                        <li class="list-inline-item">
+                            <a href="#!"><i class="bi-instagram fs-3"></i></a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </footer>
+</section>
+        
+<!-- INICIAR MAPA SCRIPT -->
+<script>        
        let map;
        let markers = [];  // Lista para armazenar os marcadores
    
@@ -200,14 +427,11 @@ while ($ponto = $resultado->fetch_assoc()) {
         document.getElementById("info-modal").style.display = "block";  // Exibe o modal com informações
         document.getElementById("info-modal").style.transform = "translateX(0)";  // Exibe o modal deslizando de volta
     }
-}
+}  
+</script>
 
-
-
-       
-
-
-
+<!-- zoom dinamico ai clicar no card, ir ate o ponto no mapa -->
+<script>
        // quando clica no card, ele leva para o mapa
        $(document).on('click', '.card-clickable', function() {
     const pontoId = $(this).data('ponto-id');  // Obter o ID do ponto do card clicado
@@ -220,13 +444,10 @@ while ($ponto = $resultado->fetch_assoc()) {
         scrollTop: $("#map").offset().top - 50  // Ajusta a rolagem para deixar uma margem de 50px do topo
     }, -500);  // A animação vai durar 1 segundo
 });
+</script>      
 
-
-
+<script>//Excluir ponto sem recarregar a tela
        
-
-
-       //Excluir ponto sem recarregar a tela
    
        $(document).on('click', '.excluir-ponto', function() {
     const pontoId = $(this).data('ponto-id');
@@ -257,8 +478,10 @@ while ($ponto = $resultado->fetch_assoc()) {
         });
     }
 });
+</script>
 
-
+<!-- ações do comentario sem recarregar  a pagina -->
+<script>
    
        // Enviar comentário sem recarregar a página
        $(document).on('submit', '#comentarioForm', function(event) {
@@ -316,290 +539,10 @@ while ($ponto = $resultado->fetch_assoc()) {
         }
     });
 });
-
-
-
-
-
-
-
-   </script>
-
-</head>
-<body>
-
-<!-- inicio banner -->
-    <nav class="navbar navbar-light bg-light static-top">
-        <div class="container">
-            <a class="navbar-brand" href="index.php">Bem Vindo, Senhor(a)</a>
-            <ul class="navbar-nav ml-auto">
-                <?php if ($usuarioLogado): ?>
-                    <div id="menu" class="ml-auto d-flex align-items-center">
-                        <span class="text-light me-3">Bem Vindo Sr. <?= htmlspecialchars($_SESSION['usuario']) ?> !</span>
-                    </div>
-                    <?php if (!$isAdmin): ?>
-                        <a class="btn btn-primary" href="solicitacaoForm.php">Solicitar Cadastro de Ponto</a>
-                    <?php endif; ?>
-                    <?php if ($isAdmin): ?>
-                        <a class="btn btn-primary" href="gerenciar_solicitacoes.php">Gerenciar Solicitações</a>
-                        <a class="btn btn-primary" href="cadastro_ponto.php">Cadastrar Ponto</a>
-                    <?php endif; ?>
-                    <a class="btn btn-primary" href="logout.php">Sair</a>
-                <?php else: ?>
-                    <a class="btn btn-primary" href="login.php">Entrar</a>
-                    <a class="btn btn-primary" href="cadastro.php">Cadastrar-se</a>
-                <?php endif; ?>
-            </ul>
-        </div>
-    </nav>
-        
-<!-- Masthead --> 
-<header class="masthead">
-    <div class="container mt-4">
-        <h2>Pontos Turísticos de Telêmaco Borba</h2>
-
-        <!-- Divisão para o Mapa e Modal -->
-        <div id="map-container" style="display: flex; justify-content: center; align-items: flex-start; height: 80vh;">
-
-            <!-- Mapa (inicialmente centralizado) -->
-            <div id="map" style="width: 60%; height: 100%; transition: transform 0.5s ease;"></div>
-
-            <!-- Modal com Informações (oculto inicialmente) -->
-            <div id="info-modal" style="width: 35%; height: 100%; overflow-y: auto; display: none; transition: transform 0.5s ease; padding: 20px;">
-                <!-- Botão Voltar -->
-                <button id="back-btn" class="btn btn-primary" style="position: absolute; top: 10px; left: 10px;">Voltar</button>
-                <div style="height: 50%; width: 100%; overflow: hidden;">
-                    <img id="modal-image" class="img-fluid" style="object-fit: cover; height: 100%; width: 100%;" />
-                </div>
-                <h3 id="modal-title"></h3>
-                <p id="modal-description" style="margin-bottom: 15px;"></p>
-                <!-- Descrição com "Ler Mais" se for muito grande -->
-                <div id="long-description-container" style="display: none;">
-                    <p id="modal-long-description" style="display: none;"></p>
-                    <button id="read-more-btn" style="display: none;">Ler Mais</button>
-                </div>
-            </div>
-
-        </div> <!-- Fim do map-container -->
-
-        </div> <!-- Fim da linha de cards -->
-
-    </div> <!-- Fim do container -->
-</header>
-
-<!-- Script CSS para Divisão do Mapa e Modal -->
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const mapElement = document.getElementById('map');
-        const infoModal = document.getElementById('info-modal');
-        const mapContainer = document.getElementById('map-container');
-        const modalTitle = document.getElementById('modal-title');
-        const modalDescription = document.getElementById('modal-description');
-        const modalImage = document.getElementById('modal-image');
-        const longDescriptionContainer = document.getElementById('long-description-container');
-        const readMoreBtn = document.getElementById('read-more-btn');
-        const modalLongDescription = document.getElementById('modal-long-description');
-        const backBtn = document.getElementById('back-btn');
-
-        // Função para exibir mapa e modal com informações
-        function showMapAndModal() {
-            mapElement.style.transform = "translateX(-40%)"; // Mapa se move para a esquerda
-            infoModal.style.display = "block";  // Exibe o modal com as informações
-            infoModal.style.transform = "translateX(0)";  // Exibe o modal deslizando de volta
-        }
-
-        // Função para preencher o modal com as informações
-        function populateModal(title, description, image, longDescription) {
-            modalTitle.textContent = title;
-            modalDescription.textContent = description;
-            modalImage.src = image;
-            modalLongDescription.textContent = longDescription;
-
-            // Verifica se a descrição é muito longa e exibe "Ler Mais"
-            if (longDescription.length > 50) {
-                longDescriptionContainer.style.display = 'block';
-                readMoreBtn.style.display = 'inline-block';
-            } else {
-                longDescriptionContainer.style.display = 'none';
-                readMoreBtn.style.display = 'none';
-            }
-
-            // Lógica do botão "Ler mais"
-            readMoreBtn.addEventListener('click', function() {
-                if (modal-description.style.display === 'none' || modalLongDescription.style.display === '') {
-                    modalLongDescription.style.display = 'block';  // Exibe a descrição longa
-                    readMoreBtn.textContent = 'Ler Menos';  // Troca o texto para "Ler Menos"
-                } else {
-                    modalLongDescription.style.display = 'none';  // Oculta a descrição longa
-                    readMoreBtn.textContent = 'Ler Mais';  // Troca o texto para "Ler Mais"
-                }
-            });
-        }
-
-        // Função para voltar ao estado inicial
-        function backToInitialState() {
-            mapElement.style.transform = "translateX(0)";  // Mapa retorna ao centro
-            infoModal.style.display = "none";  // Esconde o modal
-        }
-
-        // Ação do botão Voltar
-        backBtn.addEventListener('click', function() {
-            backToInitialState();  // Chama a função para voltar à posição inicial
-        });
-
-
-    });
 </script>
 
-
-
-
-
-
-
-
-        <!-- Coisas a Se fazer no site-->
-        <section class="features-icons bg-light text-center">
-            <div class="container">
-                <div class="row">
-                <div class="features-icons-item mx-auto mb-5 mb-lg-0 mb-lg-3">
-                    <div class="features-icons-icon d-flex"><i class="bi-window m-auto text-primary"></i></div>
-                        <h3>Procure</h3>
-                        <p class="lead mb-0">Procure o Ponto Turístico Desejado</p>
-                        <input type="text" id="search-input" class="form-control mt-3" placeholder="Digite o nome do ponto turístico">
-                    </div>
-                    <div class="features-icons-item mx-auto mb-5 mb-lg-0 mb-lg-3">
-                        <div class="features-icons-icon d-flex"><i class="bi-layers m-auto text-primary"></i></div>
-                            <h3>Cadastre um Ponto</h3>
-                            <p class="lead mb-0">Cadastre o Lugar que julga ser importante!</p>
-                            <?php if (!$isAdmin): ?>    
-                                <a href="solicitacaoForm.php" class="btn btn-primary" aria-label="Cadastrar um ponto turístico">Cadastrar Ponto</a>
-                            <?php endif; ?>
-
-                    </div>
-
-                    <div class="features-icons-item mx-auto mb-0 mb-lg-3">
-                        <div class="features-icons-icon d-flex"><i class="bi-terminal m-auto text-primary"></i></div>
-                            <h3>Comente</h3>
-                            <p class="lead mb-0">Comente no seu ponto favorito ou no que você mais odiou. Deixe seu feedback!</p>
-                            
-                    </div>
-
-
-            </div>
-        </section>
-        
-        <!-- Aqui são os cards com as imagens-->
-        <section class="showcase">
-        <div class="container-fluid p-0">
-    <div class="row">
-        <?php foreach ($pontosTuristicos as $ponto): ?>
-            <div class="col-lg-4 col-md-6 mb-4">
-                <div class="card card-clickable h-100" data-ponto-id="<?= $ponto['id'] ?>" onclick="centerMapAndPlaceMarker(<?= $ponto['id'] ?>)">
-                    <div class="card-img-container">
-                        <img class="card-img-top" src="<?= $ponto['imagem_url'] ?>" alt="Imagem de <?= htmlspecialchars($ponto['nome']) ?>">
-                    </div>
-                    <div class="card-body">
-                        <h5 class="card-title"><?= htmlspecialchars($ponto['nome']) ?></h5>
-                        <p class="card-text"><?= htmlspecialchars($ponto['descricao']) ?></p>
-                    </div>
-                    <div class="card-footer d-flex justify-content-between">
-                        <?php if ($isAdmin): ?>
-                            <button class="btn btn-danger excluir-ponto" data-ponto-id="<?= $ponto['id'] ?>">Excluir</button>
-                        <?php endif; ?>
-                        <button class="btn btn-info" data-toggle="modal" data-target="#comentariosModal" data-ponto-id="<?= $ponto['id'] ?>">Comentários</button>
-                    </div>
-                </div>
-            </div>
-        <?php endforeach; ?>
-    </div>
-</div>
-
-<style>
-    .card-img-container {
-        width: 100%;
-        height: 100%; /* Altura uniforme para todas as imagens */
-        
-    }
-
-    .card-img-container img {
-        
-        width: 50%;
-        height: 100%;
-        object-fit: cover; /* Garante que a imagem preencha o espaço sem distorções */
-    }
-</style>
-
-
-           <!-- Modal para exibir e adicionar comentários -->
-            <div class="modal fade" id="comentariosModal" tabindex="-1" role="dialog" aria-labelledby="comentariosModalLabel" aria-hidden="true">
-                <div class="modal-dialog" role="document">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                <span aria-hidden="true">&times;</span>
-                            </button>
-                        </div>
-                        <div class="modal-body">
-                            <ul id="comentariosList"></ul>
-                            <?php if ($usuarioLogado): ?>
-                                <div class="mt-3">
-                                <form id="comentarioForm" action="" method="POST">
-                                    <div class="form-group">
-                                        <label for="comentario">Deixe seu comentário:</label>
-                                        <textarea class="form-control" name="comentario" required></textarea>
-                                    </div>
-                                    <input type="hidden" name="ponto_id" id="modalPontoId" value="">
-                                    <button type="submit" class="btn btn-primary">Enviar Comentário</button>
-                                </form>
-                                </div>
-                                <?php endif; ?>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-              
-
-        </section>
-        
-       
-        <!-- Footer-->
-        <footer class="footer bg-light ">
-            <div class="container">
-                <div class="row">
-                    <div class="col-lg-6 h-100 text-center text-lg-start my-auto">
-                        <ul class="list-inline mb-2">
-                            <li class="list-inline-item"><a href="#!">Sobre</a></li>
-                            <li class="list-inline-item">⋅</li>
-                            <li class="list-inline-item"><a href="#!">Contato</a></li>
-                            <li class="list-inline-item">⋅</li>
-                            <li class="list-inline-item"><a href="#!">Terms of Use</a></li>
-                            <li class="list-inline-item">⋅</li>
-                            <li class="list-inline-item"><a href="#!">Privacy Policy</a></li>
-                        </ul>
-                        <p class="text-muted small mb-4 mb-lg-0">&copy; Your Website 2023. All Rights Reserved.</p>
-                    </div>
-                    <div class="col-lg-6 h-100 text-center text-lg-end my-auto">
-                        <ul class="list-inline mb-0">
-                            <li class="list-inline-item me-4">
-                                <a href="#!"><i class="bi-facebook fs-3"></i></a>
-                            </li>
-                            <li class="list-inline-item me-4">
-                                <a href="#!"><i class="bi-twitter fs-3"></i></a>
-                            </li>
-                            <li class="list-inline-item">
-                                <a href="#!"><i class="bi-instagram fs-3"></i></a>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </footer>
-
-        <script>
-
-
+<!-- // Preencher o modal com comentários -->
+<script>
            // Preencher o modal com comentários
     $('#comentariosModal').on('show.bs.modal', function(event) {
         const button = $(event.relatedTarget); 
@@ -617,10 +560,10 @@ while ($ponto = $resultado->fetch_assoc()) {
             }
         });
     });
-        </script>
+</script>
 
-          <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-          
+<!-- bootstrap -->
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 
     </body>
 </html>
