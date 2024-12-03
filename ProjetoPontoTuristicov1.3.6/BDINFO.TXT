@@ -1,0 +1,45 @@
+-- Criação do banco de dados
+CREATE DATABASE telemaco_turismo;
+
+-- Seleciona o banco de dados
+USE telemaco_turismo;
+
+-- Tabela para armazenar pontos turísticos
+CREATE TABLE pontos_turisticos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nome VARCHAR(255) NOT NULL,
+    descricao TEXT NOT NULL,
+    localizacao_lat DECIMAL(10, 8) NOT NULL, -- Latitude
+    localizacao_lng DECIMAL(11, 8) NOT NULL, -- Longitude
+    imagem_url VARCHAR(255) NOT NULL, -- URL da imagem
+    data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- Data de cadastro
+);
+
+-- Tabela para armazenar solicitações de novos pontos turísticos
+CREATE TABLE solicitacoes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nome VARCHAR(255) NOT NULL,
+    descricao TEXT NOT NULL,
+    latitude DECIMAL(10, 8) NOT NULL, -- Latitude
+    longitude DECIMAL(11, 8) NOT NULL, -- Longitude
+    imagem VARCHAR(255) NOT NULL, -- URL da imagem
+    status ENUM('pendente', 'aprovada', 'rejeitada') DEFAULT 'pendente', -- Status da solicitação
+    data_solicitacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- Data da solicitação
+);
+
+-- Tabela para armazenar usuários
+CREATE TABLE usuarios (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    usuario VARCHAR(255) NOT NULL UNIQUE,
+    senha VARCHAR(255) NOT NULL,
+    is_admin TINYINT(1) DEFAULT 0, -- 1 se for admin, 0 se não for
+    data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- Data de cadastro
+);
+
+CREATE TABLE comentarios (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    ponto_id INT NOT NULL,
+    usuario VARCHAR(100) NOT NULL,
+    comentario TEXT NOT NULL,
+    data_comentario DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (ponto_id) REFERENCES pontos_turisticos(id) ON DELETE CASCADE)
